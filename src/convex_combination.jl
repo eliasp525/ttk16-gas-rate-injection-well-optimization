@@ -4,6 +4,7 @@ using DataFrames
 using CSV
 using LinearAlgebra
 using Plots
+using LaTeXStrings
 
 ### Data
 
@@ -19,7 +20,7 @@ end
 
 Qinj_max = 500; # Max gas injection
 Qliq_max = 5500; # Max liquid production
-Qgas_max = 6000; # Max gas production
+Qgas_max = 10000; # Max gas production
 
 # Read in bounds on injection
 injectionbounds_df = CSV.read(joinpath(DATA_DIR,"injectionbounds.csv"), DataFrames.DataFrame, delim = " ", header = ["wellno", "low", "high"])
@@ -50,10 +51,10 @@ endpointno = accumulate(+, num_points);
 variable_ranges = [endpointno[w]-num_points[w]+1:endpointno[w] for w in 1:N];
 
 
-QINJ_MAX_RANGE = 500:5:530; #300:5:5000;
+QINJ_MAX_RANGE = 400:5000; #300:5:5000;
 
 all_objective_values = Array{Float64}(undef, length(QINJ_MAX_RANGE));
-all_qinjes = Array{Vector{Float64}}(undef, length(QINJ_MAX_RANGE))
+all_qinjes = Matrix{Float64}(undef, N, length(QINJ_MAX_RANGE))
 Qinj_maxes = collect(QINJ_MAX_RANGE);
 
 for optnum in 1:length(QINJ_MAX_RANGE)
@@ -136,9 +137,9 @@ for optnum in 1:length(QINJ_MAX_RANGE)
 
     optimize!(model);
 
-    for w in Wells
-        @show value.(lambdas[variable_ranges[w]]);
-    end
+    # for w in Wells
+    #     @show value.(lambdas[variable_ranges[w]]);
+    # end
 
     # total oil production
     all_objective_values[optnum] = objective_value(model);
@@ -150,7 +151,7 @@ for optnum in 1:length(QINJ_MAX_RANGE)
         qinjes[w] = dot(value.(lambdas[variable_ranges[w]]), datapoints_df.qinj[variable_ranges[w]]);
     end
 
-    all_qinjes[optnum] = qinjes;
+    all_qinjes[:, optnum] = qinjes;
 
     # @show qinjes;
 
@@ -162,5 +163,21 @@ for optnum in 1:length(QINJ_MAX_RANGE)
 
 end
 
-@show all_qinjes
-@show all_objective_values
+
+# plotting
+
+#plot(all_qinjes, Qinj_maxes);
+plot(Qinj_maxes, all_objective_values,
+    labels="Total oil production",
+    xlabel="Maximum total injection rate",
+    ylabel="Oil rate")
+
+plot(
+    Qinj_maxes, transpose(all_qinjes), 
+    labels=["Injection rate well 1" "Injection rate well 2" "Injection rate well 3" "Injection rate well 4" "Injection rate well 5" "Injection rate well 6" "Injection rate well 7" "Injection rate well 8"],
+    xlabel="Maximum total injection rate",
+    ylabel="Single well injection rate",
+    )
+
+#@show all_qinjes
+#@show all_objective_values
